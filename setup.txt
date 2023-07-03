@@ -54,7 +54,7 @@ server {
     ssl_certificate_key /etc/ssl/private/ssl-cert-snakeoil.key;
 
     location / {
-        proxy_set_header "Host" "social.gnuweeb.org";  
+        proxy_set_header "Host" "social.gnuweeb.org";
         proxy_ssl_verify off;
         proxy_pass https://10.4.4.2;
     }
