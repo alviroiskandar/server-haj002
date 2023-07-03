@@ -1,0 +1,70 @@
+
+### Install tools
+sudo apt install -y htop nload iputils-ping fping nginx ca-certificates curl gnupg wget git;
+
+
+### Install docker
+sudo install -m 0755 -d /etc/apt/keyrings;
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg;
+sudo chmod a+r /etc/apt/keyrings/docker.gpg;
+echo \
+  "deb [arch="$(dpkg --print-architecture)" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+  "$(. /etc/os-release && echo "$VERSION_CODENAME")" stable" | \
+  sudo tee /etc/apt/sources.list.d/docker.list > /dev/null;
+sudo apt-get update -y;
+sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin;
+
+
+### Clone the repo
+cd /opt;
+git clone https://github.com/alviroiskandar/server-haj002 server;
+
+
+### Set swap
+cd /opt/server;
+fallocate -l 4G swap0.swo;
+chmod 600 swap0.swo;
+mkswap swap0.swo;
+
+
+### Set crontab
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin
+@reboot /usr/bin/bash /opt/server/init_net.sh
+@reboot /usr/sbin/swapon /opt/server/swap0.swo
+
+
+### Create a self-signed ssl certificate (assume Cloudflare handles the front page)
+sudo make-ssl-cert generate-default-snakeoil --force-overwrite 
+
+
+### Create a nginx vhost config
+server {
+    listen 80;
+    listen [::]:80;
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+
+    server_name social.gnuweeb.org;
+    ssl_certificate /etc/ssl/certs/ssl-cert-snakeoil.pem;
+    ssl_certificate_key /etc/ssl/private/ssl-cert-snakeoil.key;
+
+    location / {
+        proxy_pass_header "Host";
+        proxy_pass https://10.4.4.2;
+    }
+}
+
+
+### Run mastodon
+# After restoring data to /opt/mastodon
+cd mastodon;
+# Prepare docker-compose.yml from the example or zip.
+#
+# To generate keys for SECRET_KEY_BASE & OTP_SECRET run
+# docker run --rm -it --entrypoint /bin/bash lscr.io/linuxserver/mastodon generate-secret
+# once for each.
+#
+# To generate keys for VAPID_PRIVATE_KEY & VAPID_PUBLIC_KEY run
+# docker run --rm -it --entrypoint /bin/bash lscr.io/linuxserver/mastodon generate-vapid
+#
+docker-compose up --build -d;

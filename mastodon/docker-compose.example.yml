@@ -1,0 +1,95 @@
+version: "2.1"
+
+networks:
+  masto-net:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+      - subnet: 10.4.4.0/24
+        gateway: 10.4.4.1
+      - subnet: fcdd:ae::/64
+        gateway: fcdd:ae::1
+    driver_opts:
+      com.docker.network.bridge.name: masto-net
+
+services:
+  redis:
+    networks:
+      masto-net:
+        ipv4_address: 10.4.4.4
+        ipv6_address: fcdd:ae::4
+    image: 'bitnami/redis:latest'
+    restart: unless-stopped
+    container_name: masto-redis
+    environment:
+      - ALLOW_EMPTY_PASSWORD=yes
+    volumes:
+      - /opt/mastodon/redis:/bitnami/redis/data
+
+  postgres:
+    networks:
+      masto-net:
+        ipv4_address: 10.4.4.3
+        ipv6_address: fcdd:ae::3
+    image: postgres
+    restart: unless-stopped
+    container_name: masto-postgres
+    environment:
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_USER=mastodon
+      - POSTGRES_DB=mastodon
+      - PGDATA=/var/lib/postgresql/data
+    volumes:
+      - /opt/mastodon/postgres:/var/lib/postgresql/data
+
+  mastodon:
+    networks:
+      masto-net:
+        ipv4_address: 10.4.4.2
+        ipv6_address: fcdd:ae::2
+    depends_on:
+      - postgres
+      - redis
+    image: lscr.io/linuxserver/mastodon:latest
+    restart: unless-stopped
+    container_name: mastodon
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Etc/UTC
+      - LOCAL_DOMAIN=gnuweeb.org
+      - REDIS_HOST=10.4.4.4
+      - REDIS_PORT=6379
+      - DB_HOST=10.4.4.3
+      - DB_USER=mastodon
+      - DB_NAME=mastodon
+      - DB_PASS=password
+      - DB_PORT=5432
+      - ES_ENABLED=false
+      - SECRET_KEY_BASE=
+      - OTP_SECRET=
+      - VAPID_PRIVATE_KEY=
+      - VAPID_PUBLIC_KEY=
+      - SMTP_SERVER=mail1.gnuweeb.org
+      - SMTP_PORT=587
+      - SMTP_LOGIN=user
+      - SMTP_PASSWORD=pass
+      - SMTP_FROM_ADDRESS=social@gnuweeb.org
+      - S3_ENABLED=false
+      - WEB_DOMAIN=social.gnuweeb.org #optional
+      - ES_HOST=es #optional
+      - ES_PORT=9200 #optional
+      - ES_USER=elastic #optional
+      - ES_PASS=elastic #optional
+      - S3_BUCKET= #optional
+      - AWS_ACCESS_KEY_ID= #optional
+      - AWS_SECRET_ACCESS_KEY= #optional
+      - S3_ALIAS_HOST= #optional
+      - SIDEKIQ_ONLY=false #optional
+      - SIDEKIQ_QUEUE= #optional
+      - SIDEKIQ_DEFAULT=false #optional
+      - SIDEKIQ_THREADS=5 #optional
+      - DB_POOL=5 #optional
+    volumes:
+      - /opt/mastodon/mastodon/config:/config
