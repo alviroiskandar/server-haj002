@@ -54,6 +54,7 @@ iptables -t filter -X;
 iptables -t filter -A INPUT -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT;
 iptables -t filter -A INPUT -p tcp -m multiport --dports 80,443,48588 -j ACCEPT;
 iptables -t filter -A INPUT -p icmp -j ACCEPT;
+iptables -t filter -A INPUT -s 10.3.3.0/24 -j ACCEPT;
 iptables -t filter -A INPUT -i lo -j ACCEPT;
 iptables -t filter -P INPUT DROP;
 
