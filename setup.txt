@@ -1,4 +1,4 @@
-
+echo 123;
 ### Install tools
 sudo apt install -y htop nload iputils-ping fping nginx ca-certificates curl gnupg wget git;
 
