@@ -2,6 +2,7 @@ version: "2.1"
 
 networks:
   masto-net:
+    enable_ipv6: true
     driver: bridge
     ipam:
       driver: default
