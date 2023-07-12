@@ -41,6 +41,8 @@ $EM sysctl -w net.ipv6.conf.eth0.proxy_ndp=1;
 $EM sysctl -w net.ipv6.conf.eth1p.proxy_ndp=1;
 $EM sysctl -w net.ipv4.ip_forward=1;
 
+$EM iptables -t nat -F;
+$EM iptables -t nat -X;
 $EM iptables -t nat -I PREROUTING -d $IPV4_PUB -j DNAT --to-destination 10.3.3.2;
 $EM iptables -t nat -I OUTPUT -d $IPV4_PUB -j DNAT --to-destination 10.3.3.2;
 $EM iptables -t nat -I POSTROUTING -s 10.3.3.0/24 ! -d 10.3.3.0/24 -j SNAT --to-source $IPV4_PUB;
@@ -51,13 +53,28 @@ iptables -t filter -P FORWARD ACCEPT;
 iptables -t filter -P OUTPUT ACCEPT;
 iptables -t filter -F;
 iptables -t filter -X;
+
+iptables -t filter -N ACCEPT_LOCAL_SRC;
+iptables -t filter -A ACCEPT_LOCAL_SRC -s 10.0.0.0/8 -j ACCEPT;
+iptables -t filter -A ACCEPT_LOCAL_SRC -s 192.168.0.0/16 -j ACCEPT;
+iptables -t filter -A ACCEPT_LOCAL_SRC -s 172.16.0.0/12 -j ACCEPT;
+iptables -t filter -A ACCEPT_LOCAL_SRC -j RETURN;
+
+iptables -t filter -N ACCEPT_LOCAL_DST;
+iptables -t filter -A ACCEPT_LOCAL_DST -d 10.0.0.0/8 -j ACCEPT;
+iptables -t filter -A ACCEPT_LOCAL_DST -d 192.168.0.0/16 -j ACCEPT;
+iptables -t filter -A ACCEPT_LOCAL_DST -d 172.16.0.0/12 -j ACCEPT;
+iptables -t filter -A ACCEPT_LOCAL_DST -j RETURN;
+
 iptables -t filter -A INPUT -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT;
 iptables -t filter -A INPUT -p tcp -m multiport --dports 80,443,48588 -j ACCEPT;
 iptables -t filter -A INPUT -p icmp -j ACCEPT;
-iptables -t filter -A INPUT -s 10.3.3.0/24 -j ACCEPT;
+iptables -t filter -A INPUT -j ACCEPT_LOCAL_SRC;
 iptables -t filter -A INPUT -i lo -j ACCEPT;
 iptables -t filter -P INPUT DROP;
 
+iptables -t filter -A FORWARD -j ACCEPT_LOCAL_SRC;
+iptables -t filter -A FORWARD -j ACCEPT_LOCAL_DST;
 iptables -t filter -P FORWARD DROP;
 iptables -t filter -P OUTPUT ACCEPT;
 
@@ -65,13 +82,20 @@ iptables -t filter -P OUTPUT ACCEPT;
 ip6tables -t filter -P INPUT ACCEPT;
 ip6tables -t filter -P FORWARD ACCEPT;
 ip6tables -t filter -P OUTPUT ACCEPT;
+
 ip6tables -t filter -F;
 ip6tables -t filter -X;
+
 ip6tables -t filter -A INPUT -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT;
 ip6tables -t filter -A INPUT -p tcp -m multiport --dports 80,443,48588 -j ACCEPT;
 ip6tables -t filter -A INPUT -p icmpv6 -j ACCEPT;
+ip6tables -t filter -A INPUT -s fc00::/7 -j ACCEPT;
 ip6tables -t filter -A INPUT -i lo -j ACCEPT;
 ip6tables -t filter -P INPUT DROP;
 
+ip6tables -t filter -A FORWARD -s fc00::/7 -j ACCEPT;
+ip6tables -t filter -A FORWARD -d fc00::/7 -j ACCEPT;
 ip6tables -t filter -P FORWARD DROP;
 ip6tables -t filter -P OUTPUT ACCEPT;
+
+service docker restart;
