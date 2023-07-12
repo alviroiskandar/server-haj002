@@ -94,3 +94,5 @@ services:
       - DB_POOL=5 #optional
     volumes:
       - /opt/mastodon/mastodon/config:/config
+      - ./resolv.conf:/etc/resolv.conf
+      - ./hosts:/etc/hosts
