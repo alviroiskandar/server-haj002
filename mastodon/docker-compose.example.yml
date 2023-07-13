@@ -26,7 +26,7 @@ services:
     environment:
       - ALLOW_EMPTY_PASSWORD=yes
     volumes:
-      - /opt/mastodon/redis:/bitnami/redis/data
+      - ./data/mastodon/redis:/bitnami/redis/data
 
   postgres:
     networks:
@@ -42,7 +42,7 @@ services:
       - POSTGRES_DB=mastodon
       - PGDATA=/var/lib/postgresql/data
     volumes:
-      - /opt/mastodon/postgres:/var/lib/postgresql/data
+      - ./data/mastodon/postgres:/var/lib/postgresql/data
 
   mastodon:
     networks:
@@ -52,9 +52,11 @@ services:
     depends_on:
       - postgres
       - redis
-    image: lscr.io/linuxserver/mastodon:latest
+    image: mastodon-gw
+    build: ./docker-mastodon
     restart: unless-stopped
     container_name: mastodon
+    hostname: social.gnuweeb.org
     environment:
       - PUID=1000
       - PGID=1000
@@ -90,9 +92,11 @@ services:
       - SIDEKIQ_ONLY=false #optional
       - SIDEKIQ_QUEUE= #optional
       - SIDEKIQ_DEFAULT=false #optional
-      - SIDEKIQ_THREADS=5 #optional
-      - DB_POOL=5 #optional
+      - SIDEKIQ_THREADS=32 #optional
+      - DB_POOL=32 #optional
+      - HCAPTCHA_SECRET_KEY= #optional
+      - HCAPTCHA_SITE_KEY=
     volumes:
-      - /opt/mastodon/mastodon/config:/config
+      - ./data/mastodon/mastodon/config:/config
       - ./resolv.conf:/etc/resolv.conf
       - ./hosts:/etc/hosts

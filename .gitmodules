@@ -1,0 +1,3 @@
+[submodule "mastodon/docker-mastodon"]
+	path = mastodon/docker-mastodon
+	url = https://github.com/alviroiskandar/docker-mastodon.git
