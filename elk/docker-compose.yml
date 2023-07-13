@@ -1,0 +1,30 @@
+version: "2.1"
+
+networks:
+  elk-net:
+    enable_ipv6: true
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+      - subnet: 10.4.5.0/24
+        gateway: 10.4.5.1
+      - subnet: fcdd:af::/64
+        gateway: fcdd:af::1
+    driver_opts:
+      com.docker.network.bridge.name: elk-net
+
+services:
+  elk:
+    networks:
+      elk-net:
+        ipv4_address: 10.4.5.2
+        ipv6_address: fcdd:af::2
+    build:
+      context: ./elk_git
+      dockerfile: Dockerfile
+    volumes:
+      # make sure this directory has the same ownership as the elk user from the Dockerfile
+      # otherwise Elk will not be able to store configs for accounts
+      # e.q. mkdir ./elk-storage; sudo chown 911:911 ./elk-storage
+      - './elk-storage:/elk/data'
