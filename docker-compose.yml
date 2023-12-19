@@ -1,0 +1,184 @@
+version: "2.1"
+
+networks:
+  net-haj002:
+    enable_ipv6: true
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+      - subnet: 10.75.0.0/24
+        gateway: 10.75.0.1
+      - subnet: fcdd:1000::/64
+        gateway: fcdd:1000::1
+    driver_opts:
+      com.docker.network.bridge.name: net-haj002
+
+services:
+  redis:
+    networks:
+      net-haj002:
+        ipv4_address: 10.75.0.2
+        ipv6_address: fcdd:1000::2
+    image: 'bitnami/redis:latest'
+    restart: unless-stopped
+    container_name: redis
+    environment:
+      - ALLOW_EMPTY_PASSWORD=yes
+    volumes:
+      - ./data/redis:/bitnami/redis/data
+
+  postgres:
+    networks:
+      net-haj002:
+        ipv4_address: 10.75.0.3
+        ipv6_address: fcdd:1000::3
+    image: postgres
+    restart: unless-stopped
+    container_name: postgres
+    user: 999:999
+    environment:
+      - POSTGRES_PASSWORD=858869123qweASDzxc
+      - POSTGRES_USER=mastodon
+      - POSTGRES_DB=mastodon
+      - PGDATA=/var/lib/postgresql/data
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+
+  mastodon:
+    networks:
+      net-haj002:
+        ipv4_address: 10.75.0.4
+        ipv6_address: fcdd:1000::4
+    depends_on:
+      - postgres
+      - redis
+    image: mastodon-gw
+    build:
+      context: ./docker_app/mastodon/mastodon_git
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    container_name: mastodon
+    hostname: social.gnuweeb.org
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Etc/UTC
+      - LOCAL_DOMAIN=gnuweeb.org
+      - REDIS_HOST=10.75.0.2
+      - REDIS_PORT=6379
+      - DB_HOST=10.75.0.3
+      - DB_USER=mastodon
+      - DB_NAME=mastodon
+      - DB_PASS=858869123qweASDzxc
+      - DB_PORT=5432
+      - ES_ENABLED=false
+      - SECRET_KEY_BASE=09c1ce85830f262b2962fb4d1172cae3c2d9e57dd7995f0efffe56d7647cdc5a9db9c1f2b3d0269cfe561530dbaca6c254a0da5c1b2f5440cb7c807b23d0fcb4
+      - OTP_SECRET=c60a43fb62b11f2d336f56bdaa01a1ca2f3da21ee72ed5cfbaf7119f7001cba374ad8e37d8e76bdfd7949a83b9aa4b073c65c8860271be01cc29d87145f67c30
+      - VAPID_PRIVATE_KEY=9QWJrEzOMSaZR-1M16WZJ5p-ruf0fgEaYv8qRxa0RYM=
+      - VAPID_PUBLIC_KEY=BB3sKSgFv0neJvqn1WlHnweAYZDWFpAnFGJqhDkE5bquIs3h3ibT3hNqCgMP3T4poQ0WrcKrfpDEDZSfCYIq
+      - SMTP_SERVER=mail1.gnuweeb.org
+      - SMTP_PORT=587
+      - SMTP_LOGIN=ammarfaizi2
+      - SMTP_PASSWORD=858869123qweASDzxc
+      - SMTP_FROM_ADDRESS=social@gnuweeb.org
+      - S3_ENABLED=false
+      - WEB_DOMAIN=social.gnuweeb.org #optional
+      - ES_HOST=es #optional
+      - ES_PORT=9200 #optional
+      - ES_USER=elastic #optional
+      - ES_PASS=elastic #optional
+      - S3_BUCKET= #optional
+      - AWS_ACCESS_KEY_ID= #optional
+      - AWS_SECRET_ACCESS_KEY= #optional
+      - S3_ALIAS_HOST= #optional
+      - SIDEKIQ_ONLY=false #optional
+      - SIDEKIQ_QUEUE= #optional
+      - SIDEKIQ_DEFAULT=false #optional
+      - SIDEKIQ_THREADS=32 #optional
+      - DB_POOL=32 #optional
+      - HCAPTCHA_SECRET_KEY=0x8B4a15Fb15639a3d7f628f66b1Cd6Eea17dC3e09
+      - HCAPTCHA_SITE_KEY=7b5fd61c-5646-4214-b7cc-55972921a78d
+    volumes:
+      - ./data/mastodon/config:/config
+      - ./resolv.conf:/etc/resolv.conf
+
+  elk:
+    depends_on:
+      - mastodon
+    networks:
+      net-haj002:
+        ipv4_address: 10.75.0.5
+        ipv6_address: fcdd:1000::5
+    build:
+      context: ./docker_app/elk/elk_git
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    container_name: elk
+    hostname: elk.gnuweeb.org
+    volumes:
+      # make sure this directory has the same ownership as the elk user from the Dockerfile
+      # otherwise Elk will not be able to store configs for accounts
+      # e.q. mkdir ./elk-storage; sudo chown 911:911 ./elk-storage
+      - ./data/elk:/elk/data
+
+  fb_api:
+    depends_on:
+      - tor
+    networks:
+      net-haj002:
+        ipv4_address: 10.75.0.6
+        ipv6_address: fcdd:1000::6
+    image: php:8.2-fpm
+    restart: unless-stopped
+    container_name: fb_api
+    hostname: fb.gnuweeb.org
+    volumes:
+      - ./docker_app/fb_api/www.conf:/usr/local/etc/php-fpm.d/www.conf
+      - ./data/fb_api/fb.gnuweeb.org:/opt/server/data/fb_api/fb.gnuweeb.org
+
+  wkd:
+    networks:
+      net-haj002:
+        ipv4_address: 10.75.0.7
+        ipv6_address: fcdd:1000::7
+    build:
+      context: ./docker_app/wkd
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    container_name: wkd_server
+    hostname: wkd.gnuweeb.org
+    volumes:
+      - ./data/wkd/.env:/app/wkd/.env
+
+  tor:
+    networks:
+      net-haj002:
+        ipv4_address: 10.75.0.8
+        ipv6_address: fcdd:1000::8
+    build:
+      context: ./docker_app/tor
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    container_name: tor
+    hostname: tor.intern.gnuweeb.org
+    user: 1500:1500
+    volumes:
+      - ./data/tor:/var/lib/tor
+
+  tealatex:
+    networks:
+      net-haj002:
+        ipv4_address: 10.75.0.9
+        ipv6_address: fcdd:1000::9
+    build:
+      context: ./data/tealatex/latex.teainside.org
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    privileged: true
+    container_name: tealatex
+    hostname: latex.teainside.org
+    user: 65534:65534
+    volumes:
+      - ./data/tealatex/latex.teainside.org:/var/www/latex.teainside.org
+

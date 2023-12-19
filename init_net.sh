@@ -78,6 +78,8 @@ iptables -t filter -A FORWARD -j ACCEPT_LOCAL_DST;
 iptables -t filter -P FORWARD DROP;
 iptables -t filter -P OUTPUT ACCEPT;
 
+iptables -t nat -I POSTROUTING -s 10.25.0.1/24 ! -d 10.25.0.1/24 -j MASQUERADE;
+
 # ipv6
 ip6tables -t filter -P INPUT ACCEPT;
 ip6tables -t filter -P FORWARD ACCEPT;

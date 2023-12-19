@@ -9,8 +9,6 @@
 
 parent_path=$( cd "$(dirname "${BASH_SOURCE[0]}")" ; pwd -P );
 
-cd "${parent_path}";
-
 if [ ! -f "${parent_path}/elk_git/Dockerfile" ]; then
     git clone https://github.com/elk-zone/elk.git "${parent_path}/elk_git";
 fi;
